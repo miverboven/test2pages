@@ -1,8 +1,9 @@
-name: Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main  # or your default branch
 
 jobs:
   test:
@@ -16,19 +17,36 @@ jobs:
           root: ./
           css: true
 
-  deploy:
+  build:
     needs: test
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
-      contents: write
     runs-on: ubuntu-latest
-    if: success()
     steps:
       - name: Checkout repository code into runner
         uses: actions/checkout@v2
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      # Add any build steps here
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          name: website
+          path: |
+            ./index.html
+            ./logoimage.png
+            ./style.css
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v2
+        with:
+          name: website
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
